@@ -13,6 +13,12 @@
                 <mesh filename="package://armbot_description/meshes/basement.STL" scale="0.01 0.01 0.01"/>
             </geometry>
         </visual>
+        <collision>
+            <origin rpy="0 0 0" xyz="-0.5 -0.5 0"/>
+            <geometry>
+                <mesh filename="package://armbot_description/meshes/basement.STL" scale="0.01 0.01 0.01"/>
+            </geometry>
+        </collision>
     </link>
     <joint name="virtual_joint" type="fixed">
         <parent link="world"/>
@@ -27,6 +33,12 @@
                 <mesh filename="package://armbot_description/meshes/base_plate.STL" scale="0.01 0.01 0.01"/>
             </geometry>
         </visual>
+        <collision>
+            <origin rpy="0 0 0" xyz="-0.39 -0.39 -0.56"/>
+            <geometry>
+                <mesh filename="package://armbot_description/meshes/base_plate.STL" scale="0.01 0.01 0.01"/>
+            </geometry>
+        </collision>
     </link>
     <joint name="joint_1" type="revolute">
         <parent link="base_link"/>
@@ -66,6 +78,12 @@
                 <mesh filename="package://armbot_description/meshes/horizontal_arm.STL" scale="0.01 0.01 0.01"/>
             </geometry>
         </visual>
+        <collision>
+            <origin rpy="${PI / 2} 0 ${PI / 2}" xyz="-0.03 -0.4 -0.06"/>
+            <geometry>
+                <mesh filename="package://armbot_description/meshes/horizontal_arm.STL" scale="0.01 0.01 0.01"/>
+            </geometry>
+        </collision>
     </link>
     <joint name="joint_3" type="revolute">
         <parent link="forward_drive_arm"/>
@@ -83,6 +101,12 @@
                 <mesh filename="package://armbot_description/meshes/claw_support.STL" scale="0.01 0.01 0.01"/>
             </geometry>
         </visual>
+        <collision>
+            <origin rpy="0 0 ${PI / 2}" xyz="0 -0.05 -0.15"/>
+            <geometry>
+                <mesh filename="package://armbot_description/meshes/claw_support.STL" scale="0.01 0.01 0.01"/>
+            </geometry>
+        </collision>
     </link>
     <joint name ="horizontal_arm_to_claw_support" type="fixed">
         <parent link="horizontal_arm"/>
@@ -125,4 +149,17 @@
         <mimic joint="joint_4" multiplier="-1"/>
     </joint>
 
+    <link name="rgb_camera">
+        <visual>
+            <origin rpy="-1.57 0 -1.57" xyz="-0.1 0.125 0.15"/>
+            <geometry>
+                <mesh filename="package://armbot_description/meshes/pi_camera.STL" scale="0.01 0.01 0.01"/>
+            </geometry>
+        </visual>
+    </link>
+    <joint name ="rgb_camera_joint" type="fixed">
+        <parent link="base_link"/>
+        <child link = "rgb_camera"/>
+        <origin xyz="0 0.45 0.2" rpy="0 -0.5 1.57"/>
+    </joint>
 </robot>
