@@ -5,8 +5,21 @@
     <xacro:property name="effort" value="30.0"/>
     <xacro:property name="velocity" value="10.0"/>
 
+    <!-- Useful Macros -->
+    <xacro:macro name="default_inertial" params="mass">
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <mass value="${mass}" />
+            <inertia ixx="1.0" ixy="0.0" ixz="0.0"
+                     iyy="1.0" iyz="0.0"
+                     izz="1.0" />
+        </inertial>
+    </xacro:macro>
+
     <link name="world"/>
+
     <link name="base_link">
+        <xacro:default_inertial mass="1.0"/>
         <visual>
             <origin rpy="0 0 0" xyz="-0.5 -0.5 0"/>
             <geometry>
@@ -27,6 +40,7 @@
     </joint>
 
     <link name="base_plate">
+        <xacro:default_inertial mass="0.1"/>
         <visual>
             <origin rpy="0 0 0" xyz="-0.39 -0.39 -0.56"/>
             <geometry>
@@ -49,6 +63,7 @@
     </joint>
 
     <link name="forward_drive_arm">
+        <xacro:default_inertial mass="0.1"/>
         <visual>
             <origin rpy=" 0 -${PI / 2} ${PI / 2}" xyz="0.19 0.06 -0.08"/>
             <geometry>
@@ -72,6 +87,7 @@
     </joint>
 
     <link name="horizontal_arm">
+        <xacro:default_inertial mass="0.1"/>
         <visual>
             <origin rpy="${PI / 2} 0 ${PI / 2}" xyz="-0.03 -0.4 -0.06"/>
             <geometry>
@@ -95,6 +111,7 @@
     </joint>
 
     <link name="claw_support">
+        <xacro:default_inertial mass="0.05"/>
         <visual>
             <origin rpy="0 0 ${PI / 2}" xyz="0 -0.05 -0.15"/>
             <geometry>
@@ -115,12 +132,19 @@
     </joint>
     
     <link name="gripper_right">
+        <xacro:default_inertial mass="0.01"/>
         <visual>
             <origin rpy="0 0 -${PI / 2}" xyz="-0.1 0.50 -0.1"/>
             <geometry>
                 <mesh filename="package://armbot_description/meshes/right_finger.STL" scale="0.01 0.01 0.01"/>
             </geometry>
         </visual>
+        <collision>
+            <origin rpy="0 0 -${PI / 2}" xyz="-0.1 0.50 -0.1"/>
+            <geometry>
+                <mesh filename="package://armbot_description/meshes/right_finger.STL" scale="0.01 0.01 0.01"/>
+            </geometry>
+        </collision>
     </link>
     <joint name ="joint_4" type="revolute">
         <parent link="claw_support"/>
@@ -132,12 +156,19 @@
     </joint>
     
     <link name="gripper_left">
+        <xacro:default_inertial mass="0.01"/>
         <visual>
             <origin rpy="0 0 -${PI / 2}" xyz="-0.04 0.50 -0.1"/>
             <geometry>
                 <mesh filename="package://armbot_description/meshes/left_finger.STL" scale="0.01 0.01 0.01"/>
             </geometry>
         </visual>
+        <collision>
+            <origin rpy="0 0 -${PI / 2}" xyz="-0.04 0.50 -0.1"/>
+            <geometry>
+                <mesh filename="package://armbot_description/meshes/left_finger.STL" scale="0.01 0.01 0.01"/>
+            </geometry>
+        </collision>
     </link>
     <joint name ="joint_5" type="revolute">
         <parent link="claw_support"/>
@@ -156,6 +187,12 @@
                 <mesh filename="package://armbot_description/meshes/pi_camera.STL" scale="0.01 0.01 0.01"/>
             </geometry>
         </visual>
+        <collision>
+            <origin rpy="-1.57 0 -1.57" xyz="-0.1 0.125 0.15"/>
+            <geometry>
+                <mesh filename="package://armbot_description/meshes/pi_camera.STL" scale="0.01 0.01 0.01"/>
+            </geometry>
+        </collision>
     </link>
     <joint name ="rgb_camera_joint" type="fixed">
         <parent link="base_link"/>

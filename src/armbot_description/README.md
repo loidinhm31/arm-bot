@@ -1,15 +1,17 @@
-# Create URDF Model
+# Digital Twin
+
+## Create URDF Model
 ```shell
 sudo apt install ros-humble-urdf-tutorial
 ```
 
 ```shell
-ros2 launch urdf_tutorial display.launch.py model:=/media/deletal/data/WORKSPACE/arm-robot/src/armbot_description/urdf/arduinobot.urdf.xacro
+ros2 launch urdf_tutorial display.launch.py model:=/media/deletal/data/WORKSPACE/arm-robot/src/armbot_description/urdf/arm.urdf.xacro
 ```
 
-# Visualize robot
+## Visualize the Robot
 ```shell
-ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_description:="$(xacro /media/deletal/data/WORKSPACE/arm-robot/src/armbot_description/urdf/arduinobot.urdf.xacro)"
+ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_description:="$(xacro /media/deletal/data/WORKSPACE/arm-robot/src/armbot_description/urdf/arm.urdf.xacro)"
 ```
 
 ```shell
@@ -26,7 +28,16 @@ ros2 run rviz2 rviz2
 - Change Robot Description
 - Save config
 
-# Launch File
+## Launch Files
 ```shell
 ros2 launch armbot_description display.launch.py
+```
+
+## Simulate the Robot
+```shell
+sudo apt-get install ros-${ROS_DISTRO}-ros-gz
+```
+
+```shell
+ros2 launch armbot_description gazebo.launch.py
 ```
