@@ -221,7 +221,7 @@
                     <center>0.5 0.5</center>
                 </distortion>
             </camera>
-            <plugin name="gazebo_ros_camera" filename="libgazebo_ros_camera.so">
+            <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
                 <ros>
                     <remapping>~/image_raw:=image_raw</remapping>
                     <remapping>~/camera_info:=camera_info</remapping>
@@ -232,5 +232,5 @@
             </plugin>
         </sensor>
     </gazebo>
-
+`
 </robot>

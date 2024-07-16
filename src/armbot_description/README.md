@@ -36,6 +36,7 @@ ros2 launch armbot_description display.launch.py
 ## Simulate the Robot
 ```shell
 sudo apt-get install ros-${ROS_DISTRO}-ros-gz
+sudo apt-get install ros-humble-gazebo-ros-pkgs
 ```
 
 ```shell
