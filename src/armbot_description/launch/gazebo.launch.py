@@ -11,7 +11,7 @@ from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description():
     armbot_description = get_package_share_directory('armbot_description')
-    arduinobot_description_prefix = get_package_prefix('armbot_description')
+    armbot_description_prefix = get_package_prefix('armbot_description')
     gazebo_ros_dir = get_package_share_directory('gazebo_ros')
 
     model_arg = DeclareLaunchArgument(
@@ -20,7 +20,7 @@ def generate_launch_description():
         description='Absolute path to robot urdf file')
 
     model_path = os.path.join(armbot_description, "models")
-    model_path += os.pathsep + os.path.join(arduinobot_description_prefix, "share")
+    model_path += os.pathsep + os.path.join(armbot_description_prefix, "share")
 
     env_var = SetEnvironmentVariable('GAZEBO_MODEL_PATH', model_path)
 

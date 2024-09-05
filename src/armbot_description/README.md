@@ -53,6 +53,10 @@ sudo apt-get install ros-humble-gazebo-ros-pkgs
 ```shell
 ros2 launch armbot_description gazebo.launch.py
 ```
+```shell
+pkill -f -9 gzserver
+pkill -f -9 gzclient
+```
 
 # Control
 ```shell

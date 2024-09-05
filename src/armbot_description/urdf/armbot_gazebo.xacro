@@ -22,7 +22,7 @@
                     <center>0.5 0.5</center>
                 </distortion>
             </camera>
-            <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
+            <plugin filename="libgazebo_ros_camera.so" name="camera_controller">
                 <ros>
                     <remapping>~/image_raw:=image_raw</remapping>
                     <remapping>~/camera_info:=camera_info</remapping>
@@ -35,8 +35,9 @@
     </gazebo>
 
     <gazebo>
-        <plugin name="gazebo_ros2_control" filename="libgazebo_ros2_control.so">
-            <robot_param>robot description</robot_param>
+        <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
+            <robot_param>robot description
+            </robot_param>
             <robot_param_node>robot_state_publisher</robot_param_node>
             <parameters>$(find armbot_controller)/config/armbot_controllers.yaml</parameters>
         </plugin>
