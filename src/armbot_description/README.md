@@ -1,3 +1,14 @@
+It’s good practice to run rosdep in the root of your workspace (ros2_ws) to check for missing dependencies before building:
+```shell
+rosdep install -i --from-path src --rosdistro humble -y
+```
+
+```shell
+sudo apt install python3-colcon-common-extensions
+```
+
+
+
 # Digital Twin
 
 ## Create URDF Model
@@ -6,12 +17,12 @@ sudo apt install ros-humble-urdf-tutorial
 ```
 
 ```shell
-ros2 launch urdf_tutorial display.launch.py model:=/media/deletal/data/WORKSPACE/arm-robot/src/armbot_description/urdf/arm.urdf.xacro
+ros2 launch urdf_tutorial display.launch.py model:=/media/loidinh/data/WORKSPACE/arm-robot/src/armbot_description/urdf/armbot.urdf.xacro
 ```
 
 ## Visualize the Robot
 ```shell
-ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_description:="$(xacro /media/deletal/data/WORKSPACE/arm-robot/src/armbot_description/urdf/arm.urdf.xacro)"
+ros2 run robot_state_publisher robot_state_publisher --ros-args -p robot_description:="$(xacro /media/deletal/data/WORKSPACE/arm-robot/src/armbot_description/urdf/armbot.urdf.xacro)"
 ```
 
 ```shell
@@ -41,4 +52,14 @@ sudo apt-get install ros-humble-gazebo-ros-pkgs
 
 ```shell
 ros2 launch armbot_description gazebo.launch.py
+```
+
+# Control
+```shell
+sudo apt-get install ros-humble-gazebo-ros2-control
+sudo apt-get install ros-humble-ros2-control
+```
+
+```shell
+ros2 launch armbot_controller controller.launch.py
 ```

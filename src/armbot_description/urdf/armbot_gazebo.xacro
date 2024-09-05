@@ -35,10 +35,10 @@
     </gazebo>
 
     <gazebo>
-        <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
+        <plugin name="gazebo_ros2_control" filename="libgazebo_ros2_control.so">
             <robot_param>robot description</robot_param>
             <robot_param_node>robot_state_publisher</robot_param_node>
-            <parameters/>
+            <parameters>$(find armbot_controller)/config/armbot_controllers.yaml</parameters>
         </plugin>
     </gazebo>
 </robot>
