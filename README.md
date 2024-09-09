@@ -71,3 +71,25 @@ ros2 launch armbot_controller controller.launch.py
 ```shell
 ros2 launch armbot_controller slider_controller.launch.py
 ```
+
+
+# Kinematics
+
+## TF2 Transform
+```shell
+sudo apt-get install ros-${ROS_DISTRO}-tf-transformations
+```
+
+```shell
+sudo pip3 install transforms3d
+```
+
+## MoveIt2
+```shell
+sudo apt-get install ros-${ROS_DISTRO}-moveit-planners*
+sudo apt-get install ros-${ROS_DISTRO}-moveit-ros-visualization
+sudo apt-get install ros-${ROS_DISTRO}-moveit*
+sudo apt-get install ros-${ROS_DISTRO}-moveit-planners-ompl && sudo apt-get install ros-${ROS_DISTRO}-ompl
+```
+
+Go into the "Context" menu and then change the planner to "OMPL"
