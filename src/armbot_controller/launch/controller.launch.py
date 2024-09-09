@@ -9,24 +9,24 @@ from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
-    armbot_description = get_package_share_directory('armbot_description')
-    armbot_description_prefix = get_package_prefix('armbot_description')
+    armbot_description = get_package_share_directory("armbot_description")
+    armbot_description_prefix = get_package_prefix("armbot_description")
 
     model_arg = DeclareLaunchArgument(
-        name='model',
-        default_value=os.path.join(armbot_description, 'urdf', 'armbot.urdf.xacro')
+        name="model",
+        default_value=os.path.join(armbot_description, "urdf", "armbot.urdf.xacro")
     )
 
     model_path = os.path.join(armbot_description, "models")
     model_path += os.pathsep + os.path.join(armbot_description_prefix, "share")
 
-    robot_description = ParameterValue(Command(['xacro ', LaunchConfiguration('model')]),
+    robot_description = ParameterValue(Command(["xacro ", LaunchConfiguration("model")]),
                                        value_type=str)
 
     robot_state_publisher_node = Node(
-        package='robot_state_publisher',
-        executable='robot_state_publisher',
-        parameters=[{'robot_description': robot_description}]
+        package="robot_state_publisher",
+        executable="robot_state_publisher",
+        parameters=[{"robot_description": robot_description}]
     )
 
     joint_state_broadcaster_spawner = Node(

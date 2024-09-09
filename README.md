@@ -1,6 +1,6 @@
 It’s good practice to run rosdep in the root of your workspace (ros2_ws) to check for missing dependencies before building:
 ```shell
-rosdep install -i --from-path src --rosdistro humble -y
+rosdep install -i --from-path src --rosdistro ${ROS_DISTRO} -y
 ```
 
 ```shell
@@ -13,7 +13,7 @@ sudo apt install python3-colcon-common-extensions
 
 ## Create URDF Model
 ```shell
-sudo apt install ros-humble-urdf-tutorial
+sudo apt install ros-${ROS_DISTRO}-urdf-tutorial
 ```
 
 ```shell
@@ -47,7 +47,7 @@ ros2 launch armbot_description display.launch.py
 ## Simulate the Robot
 ```shell
 sudo apt-get install ros-${ROS_DISTRO}-ros-gz
-sudo apt-get install ros-humble-gazebo-ros-pkgs
+sudo apt-get install ros-${ROS_DISTRO}-gazebo-ros-pkgs
 ```
 
 ```shell
@@ -60,10 +60,14 @@ pkill -f -9 gzclient
 
 # Control
 ```shell
-sudo apt-get install ros-humble-gazebo-ros2-control
-sudo apt-get install ros-humble-ros2-control
+sudo apt-get install ros-${ROS_DISTRO}-gazebo-ros2-control
+sudo apt-get install ros-${ROS_DISTRO}-ros2-control
 ```
 
 ```shell
 ros2 launch armbot_controller controller.launch.py
+```
+
+```shell
+ros2 launch armbot_controller slider_controller.launch.py
 ```

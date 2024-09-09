@@ -1,5 +1,4 @@
 <?xml version="1.0"?>
-
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="armbot">
     <gazebo reference="rgb_camera">
         <sensor type="camera" name="rgb_camera">
@@ -36,8 +35,7 @@
 
     <gazebo>
         <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
-            <robot_param>robot description
-            </robot_param>
+            <robot_param>robot_description</robot_param>
             <robot_param_node>robot_state_publisher</robot_param_node>
             <parameters>$(find armbot_controller)/config/armbot_controllers.yaml</parameters>
         </plugin>
