@@ -93,3 +93,11 @@ sudo apt-get install ros-${ROS_DISTRO}-moveit-planners-ompl && sudo apt-get inst
 ```
 
 Go into the "Context" menu and then change the planner to "OMPL"
+
+## Alexa
+https://developer.amazon.com/en-US/docs/alexa/alexa-skills-kit-sdk-for-python/set-up-the-sdk.html
+```shell
+pip install flask
+pip install ask-sdk
+pip install flask-ask-sdk
+```
