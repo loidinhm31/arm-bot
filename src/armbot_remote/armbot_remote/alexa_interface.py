@@ -123,7 +123,7 @@ skill_builder.add_exception_handler(AllExceptionHandler())
 
 skill_adapter = SkillAdapter(
     skill=skill_builder.create(),
-    skill_id="amzn1.ask.skill.5c4994c3-2956-4aef-9ffe-7deaaaba620a",
+    skill_id="AMZ_SKILL_ID",
     app=app)
 
 
