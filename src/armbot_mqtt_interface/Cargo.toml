@@ -1,0 +1,30 @@
+[package]
+name = "armbot_mqtt_interface"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "armbot_mqtt_interface"
+path = "src/armbot_mqtt_interface.rs"
+
+[dependencies.rumqttc]
+version = "0.24.0"
+
+[dependencies.rclrs]
+version = "0.4"
+
+[dependencies.rosidl_runtime_rs]
+version = "0.4"
+
+[dependencies.std_msgs]
+version = "*"
+
+[dependencies.builtin_interfaces]
+version = "*"
+
+[dependencies.sensor_msgs]
+version = "*"
+[dependencies]
+tokio = "1.40.0"
+futures-util = "0.3.31"
+time = "0.3.36"
