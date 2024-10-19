@@ -1,15 +1,19 @@
-use rclrs::RclrsError;
+use builtin_interfaces::msg::rmw::Time;
+use rclrs::{Publisher, RclrsError};
+use rosidl_runtime_rs::{Sequence, String as RosString};
 use rumqttc::v5::mqttbytes::QoS;
-use rumqttc::v5::{Client, ConnectionError, MqttOptions};
-use sensor_msgs::msg::JointState;
+use rumqttc::v5::{Client, Connection, ConnectionError, Event, Incoming, MqttOptions};
+use sensor_msgs::msg::rmw::JointState;
 use std::f64::consts::PI;
+use std::num::ParseFloatError;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+use std_msgs::msg::rmw::Header;
 
 struct ArmbotMqttInterface {
     node: Arc<rclrs::Node>,
-    mqtt_client: Arc<Mutex<Client>>,
+    mqtt_client: Client,
     joint_commands: Arc<Mutex<Vec<f64>>>,
     joint_states: Arc<Mutex<Vec<f64>>>,
     new_command_received: Arc<Mutex<bool>>,
@@ -30,8 +34,7 @@ impl ArmbotMqttInterface {
         let mut mqtt_options = MqttOptions::new("armbot_client", mqtt_server_name, mqtt_server_port);
         mqtt_options.set_credentials(mqtt_username, mqtt_password);
         mqtt_options.set_keep_alive(Duration::from_secs(5));
-        let (mqtt_client, mut eventloop) = Client::new(mqtt_options, 10);
-        let mqtt_client = Arc::new(Mutex::new(mqtt_client));
+        let (mqtt_client, eventloop) = Client::new(mqtt_options, 10);
 
         let joint_commands = Arc::new(Mutex::new(vec![0.0; 4]));
         let joint_states = Arc::new(Mutex::new(vec![0.0; 4]));
@@ -42,30 +45,20 @@ impl ArmbotMqttInterface {
         let _command_subscriber = node.create_subscription::<JointState, _>(
             "/joint_commands",
             rclrs::QOS_PROFILE_DEFAULT,
-            move |msg: JointState| {
+            move |msg: sensor_msgs::msg::rmw::JointState| {
                 println!("Received joint command: {:?}", msg.position);
                 let mut commands = commands_clone.lock().unwrap();
-                *commands = msg.position;
+                *commands = msg.position.to_vec();
                 *new_command_received_clone.lock().unwrap() = true;
             },
         )?;
 
-        println!("Subscription setup complete");
-
+        let joint_state_publisher = node.create_publisher::<sensor_msgs::msg::rmw::JointState>("/joint_states", rclrs::QOS_PROFILE_DEFAULT)?;
         // Start MQTT event loop in a separate thread
+        let joint_states_clone = joint_states.clone();
+        let joint_state_publisher_clone = joint_state_publisher.clone();
         thread::spawn(move || {
-            for (i, notification) in eventloop.iter().enumerate() {
-                match notification {
-                    Err(ConnectionError::Io(error))
-                    if error.kind() == std::io::ErrorKind::ConnectionRefused =>
-                        {
-                            println!("Failed to connect to the server. Make sure correct client is configured properly!\nError: {error:?}");
-                            return;
-                        }
-                    _ => {}
-                }
-                println!("{i}. Notification = {notification:?}");
-            }
+            Self::mqtt_event_loop(eventloop, joint_states_clone, joint_state_publisher_clone);
         });
 
         Ok(ArmbotMqttInterface {
@@ -106,7 +99,109 @@ impl ArmbotMqttInterface {
         format!("{}{}{},", joint, Self::compensate_zeros(angle), angle)
     }
 
-    fn run(&self) -> Result<(), RclrsError> {
+    fn update_and_publish_joint_states(
+        joint_states: &Arc<Mutex<Vec<f64>>>,
+        joint_state_publisher: &Arc<Publisher<JointState>>,
+        new_joint_states: Vec<f64>,
+    ) -> Result<(), RclrsError> {
+        // Update joint states
+        {
+            println!("Publishing joints {:?}", new_joint_states.clone());
+            let mut states = joint_states.lock().map_err(|e| format!("Failed to lock joint states: {:?}", e)).unwrap();
+            *states = new_joint_states.clone();
+        }
+
+        // Create and publish JointState message
+        let mut joint_state_msg = JointState {
+            header: Header {
+                stamp: Time::default(),
+                frame_id: RosString::from(""),
+            },
+            name: Sequence::from_iter(vec![
+                "base_joint", "shoulder_joint", "elbow_joint", "gripper_joint"
+            ].into_iter().map(RosString::from)),
+            position: Sequence::from_iter(new_joint_states.iter().cloned()),
+            velocity: Sequence::new(0),
+            effort: Sequence::new(0),
+        };
+
+        println!("Joint_state message: {:?}", joint_state_msg);
+
+        joint_state_publisher.publish(&joint_state_msg)?;
+        Ok(())
+    }
+
+    fn parse_feedback(feedback: &str) -> Result<Vec<f64>, ParseFloatError> {
+        println!("Parsing feedback: {}", feedback);
+        let mut joint_states = vec![0.0; 4];
+        for part in feedback.split(',') {
+            if part.len() < 2 {
+                continue;
+            }
+            let joint = part.chars().next().unwrap();
+            let angle: f64 = part[1..].parse()?;
+            let radians = match joint {
+                'b' => (angle - 180.0) * PI / 180.0,
+                's' => (180.0 - angle) * PI / 180.0,
+                'e' => (angle - 90.0) * PI / 180.0,
+                'g' => -angle * PI / 360.0,
+                _ => continue,
+            };
+            let index = match joint {
+                'b' => 0,
+                's' => 1,
+                'e' => 2,
+                'g' => 3,
+                _ => continue,
+            };
+            joint_states[index] = radians;
+        }
+        Ok(joint_states)
+    }
+
+    fn mqtt_event_loop(
+        mut eventloop: Connection,
+        joint_states: Arc<Mutex<Vec<f64>>>,
+        joint_state_publisher: Arc<Publisher<JointState>>,
+    ) {
+        for (i, notification) in eventloop.iter().enumerate() {
+            match notification {
+                Ok(Event::Incoming(Incoming::Publish(publish))) => {
+                    let topic = publish.topic;
+                    let payload = String::from_utf8_lossy(&publish.payload);
+                    println!("Received message on topic: {:?}", topic);
+                    println!("Message payload: {}", payload);
+
+                    if topic == "armbot/feedback" {
+                        match Self::parse_feedback(&payload) {
+                            Ok(new_joint_states) => {
+                                if let Err(e) = Self::update_and_publish_joint_states(
+                                    &joint_states,
+                                    &joint_state_publisher,
+                                    new_joint_states,
+                                ) {
+                                    eprintln!("Error updating and publishing joint states: {:?}", e);
+                                }
+                            }
+                            Err(e) => eprintln!("Error parsing feedback: {:?}", e),
+                        }
+                    }
+                }
+                Ok(Event::Incoming(Incoming::ConnAck(_))) => {
+                    println!("Connected to MQTT broker");
+                }
+                Err(ConnectionError::Io(error)) if error.kind() == std::io::ErrorKind::ConnectionRefused => {
+                    println!("Failed to connect to the server. Make sure correct client is configured properly!\nError: {error:?}");
+                    return;
+                }
+                _ => {
+                    println!("{i}. Notification = {notification:?}");
+                }
+            }
+        }
+    }
+
+    fn run(&mut self) -> Result<(), RclrsError> {
         let mqtt_client = self.mqtt_client.clone();
         let joint_commands = self.joint_commands.clone();
         let joint_states = self.joint_states.clone();
@@ -114,6 +209,8 @@ impl ArmbotMqttInterface {
 
         // Spawn a thread for MQTT publishing
         thread::spawn(move || {
+            mqtt_client.subscribe("armbot/feedback", QoS::AtLeastOnce).unwrap();
+
             loop {
                 thread::sleep(Duration::from_millis(100));
 
@@ -131,7 +228,6 @@ impl ArmbotMqttInterface {
                     let commands = joint_commands.lock().unwrap().clone();
                     *joint_states.lock().unwrap() = commands.clone();
 
-                    let mut msg = String::new();
                     let base = ((commands[0] + PI / 2.0) * 180.0 / PI) as i32;
                     let shoulder = 180 - ((commands[1] + PI / 2.0) * 180.0 / PI) as i32;
                     let elbow = ((commands[2] + PI / 2.0) * 180.0 / PI) as i32;
@@ -145,7 +241,7 @@ impl ArmbotMqttInterface {
                         Self::format_joint_command('g', gripper)
                     );
                     println!("Sending new command: {}", msg);
-                    if let Err(e) = mqtt_client.lock().unwrap().publish("armbot/commands", QoS::AtLeastOnce, false, msg.into_bytes()) {
+                    if let Err(e) = mqtt_client.publish("armbot/commands", QoS::AtLeastOnce, false, msg.into_bytes()) {
                         eprintln!("Failed to send MQTT command: {:?}", e);
                     }
                 }
@@ -162,8 +258,12 @@ fn main() -> Result<(), RclrsError> {
     let mut interface = ArmbotMqttInterface::new()?;
 
     interface.on_activate()?;
-    let _result = interface.run();
+    let result = interface.run();
     interface.on_deactivate()?;
+
+    if let Err(e) = result {
+        eprintln!("Error during run: {:?}", e);
+    }
 
     Ok(())
 }

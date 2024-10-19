@@ -24,7 +24,3 @@ version = "*"
 
 [dependencies.sensor_msgs]
 version = "*"
-[dependencies]
-tokio = "1.40.0"
-futures-util = "0.3.31"
-time = "0.3.36"
