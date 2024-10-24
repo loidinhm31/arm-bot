@@ -1,0 +1,37 @@
+[package]
+name = "arm_bot_bridge"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "arm_bot_bridge"
+path = "src/arm_bot_bridge.rs"
+
+[dependencies.rumqttc]
+version = "0.24.0"
+
+[dependencies.rclrs]
+version = "0.4"
+
+[dependencies.rosidl_runtime_rs]
+version = "0.4"
+
+[dependencies.std_msgs]
+version = "*"
+
+[dependencies.builtin_interfaces]
+version = "*"
+
+[dependencies.sensor_msgs]
+version = "*"
+
+[dependencies]
+tokio = { version = "1.0", features = ["full"] }
+tokio-tungstenite = "0.20"
+futures-util = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.0", features = ["v4"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+thiserror = "1.0"
