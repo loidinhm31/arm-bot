@@ -1,6 +1,6 @@
 ```json
 {
-  "token": "your_secret_token"
+  "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkNTM1YjBlOC02NjM2LTRmMTgtYTE0Ni1lNmU4YjAzZDI2YTIiLCJleHAiOjE3Mjk4Njc1MDQsImlhdCI6MTcyOTc4MTEwNH0.yKit579Na_EpsN19RE8axghiRu4ucgOl91cGDKx9gD"
 }
 
 ```

@@ -1,11 +1,15 @@
 [package]
-name = "arm_bot_bridge"
+name = "server_bridge"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "arm_bot_bridge"
-path = "src/arm_bot_bridge.rs"
+name = "websocket_server"
+path = "src/websocket_server.rs"
+
+[[bin]]
+name = "tcp_server"
+path = "src/tcp_server.rs"
 
 [dependencies.rumqttc]
 version = "0.24.0"
@@ -34,4 +38,8 @@ serde_json = "1.0"
 uuid = { version = "1.0", features = ["v4"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
-thiserror = "1.0"
+thiserror = "1.0.64"
+jsonwebtoken = "9.3.0"
+chrono = "0.4.38"
+actix-web = "4.9.0"
+actix-cors = "0.7.0"

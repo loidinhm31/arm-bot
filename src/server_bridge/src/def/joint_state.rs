@@ -27,8 +27,8 @@ impl From<SerializableHeader> for std_msgs::msg::Header {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct SerializableRosString {
-    pub(crate) data: String,
+pub struct SerializableRosString {
+    pub data: String,
 }
 
 impl From<SerializableRosString> for RosString {
@@ -38,7 +38,7 @@ impl From<SerializableRosString> for RosString {
 }
 
 #[derive(Serialize, Deserialize)]
-pub(crate) struct SerializableJointState {
+pub struct SerializableJointState {
     header: Option<SerializableHeader>,  // Changed to use SerializableHeader
     name: Vec<String>,
     position: Vec<f64>,

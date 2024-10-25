@@ -1,37 +1,40 @@
-mod serialize;
+mod def;
 mod entry;
 mod error;
 
-use serialize::joint_state::{
+use def::joint_state::{
     SerializableJointState,
-    SerializableRosString
+    SerializableRosString,
 };
+
+use chrono::{Duration, Utc};
 use entry::publish_entry::PublisherEntry;
+use error::server_error::{
+    Result, ServerError,
+};
 use futures_util::{SinkExt, StreamExt};
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use rclrs;
 use rosidl_runtime_rs::Message;
+use sensor_msgs::msg::JointState;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
+use std::any::TypeId;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
-use std::any::{Any, TypeId};
+use std_msgs::msg::String as RosString;
 use tokio::{net::TcpListener, sync::mpsc};
 use tokio_tungstenite::{accept_async, tungstenite::protocol::Message as WsMessage};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
-use std_msgs::msg::String as RosString;
-use sensor_msgs::msg::JointState;
-use crate::error::server_error::{
-    ServerError, Result
+use def::auth::{
+    AuthMessage,
+    TokenResponse,
 };
-
-#[derive(Serialize, Deserialize, Debug)]
-struct AuthMessage {
-    token: String,
-}
+use crate::def::auth::{Claims, LoginCredentials, User};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ClientMessage {
@@ -60,9 +63,9 @@ impl ServerState {
     }
 
     fn add_client(&mut self, client: Client) {
-        let id = client.id;  // Store id before move
+        let id = client.id;
         self.clients.insert(id, client);
-        info!("Client {} connected", id);  // Use stored id
+        info!("Client {} connected", id);
     }
 
     fn remove_client(&mut self, id: Uuid) {
@@ -75,11 +78,11 @@ impl ServerState {
 pub struct RosWebSocketServer {
     node: Arc<rclrs::Node>,
     state: Arc<Mutex<ServerState>>,
-    auth_token: String,
+    jwt_secret: String,
 }
 
 impl RosWebSocketServer {
-    pub fn new(context: &rclrs::Context, node_name: &str, auth_token: String) -> Result<Self> {
+    pub fn new(context: &rclrs::Context, node_name: &str) -> Result<Self> {
         info!("Creating new ROS2 WebSocket server with node name: {}", node_name);
         let node = rclrs::create_node(context, node_name)
             .map_err(|e| {
@@ -87,27 +90,16 @@ impl RosWebSocketServer {
                 ServerError::Ros(e.to_string())
             })?;
 
-        // Test publisher creation
-        let test_pub = node.create_publisher::<RosString>("/test_topic", rclrs::QOS_PROFILE_DEFAULT)
-            .map_err(|e| {
-                error!("Failed to create test publisher: {}", e);
-                ServerError::Ros(e.to_string())
-            })?;
-
-        // Try publishing a test message
-        let test_msg = RosString { data: "Test message".to_string() };
-        if let Err(e) = test_pub.publish(test_msg) {
-            error!("Failed to publish test message: {}", e);
-        } else {
-            info!("Successfully published test message to /test_topic");
-        }
+        // Get JWT secret from environment (set by auth server)
+        let jwt_secret = env!("JWT_SECRET");
 
         Ok(RosWebSocketServer {
             node,
             state: Arc::new(Mutex::new(ServerState::new())),
-            auth_token,
+            jwt_secret: jwt_secret.to_string(),
         })
     }
+
     pub async fn run(&self, addr: &str) -> Result<()> {
         let listener = TcpListener::bind(addr).await.unwrap();
         info!("WebSocket server listening on {}", addr);
@@ -116,10 +108,10 @@ impl RosWebSocketServer {
             info!("New connection from {}", addr);
             let server_state = self.state.clone();
             let node = self.node.clone();
-            let auth_token = self.auth_token.clone();
+            let jwt_secret = self.jwt_secret.clone();
 
             tokio::spawn(async move {
-                if let Err(e) = Self::handle_connection(stream, server_state, node, auth_token).await {
+                if let Err(e) = Self::handle_connection(stream, server_state, node, jwt_secret).await {
                     error!("Connection error: {}", e);
                 }
             });
@@ -128,11 +120,56 @@ impl RosWebSocketServer {
         Ok(())
     }
 
+    fn validate_token(secret: &str, token: &str) -> Result<Claims> {
+        let validation = Validation::default();
+        let token_data = decode::<Claims>(
+            token,
+            &DecodingKey::from_secret(secret.as_bytes()),
+            &validation,
+        ).map_err(|e| ServerError::Auth(format!("Token validation failed: {}", e)))?;
+
+        Ok(token_data.claims)
+    }
+
+    pub fn authenticate(&self, credentials: &LoginCredentials) -> Result<TokenResponse> {
+        let valid_user = User {
+            username: "admin".to_string(),
+            password: "password123".to_string(),
+        };
+
+        if credentials.username == valid_user.username && credentials.password == valid_user.password {
+            // Generate JWT token if credentials are valid
+            let expiration = Utc::now()
+                .checked_add_signed(Duration::hours(24))
+                .expect("valid timestamp")
+                .timestamp();
+
+            let claims = Claims {
+                sub: credentials.username.clone(),  // Use username as subject
+                exp: expiration,
+                iat: Utc::now().timestamp(),
+            };
+
+            let token = encode(
+                &Header::default(),
+                &claims,
+                &EncodingKey::from_secret(self.jwt_secret.as_bytes()),
+            ).map_err(|e| ServerError::Auth(format!("Token generation failed: {}", e)))?;
+
+            Ok(TokenResponse {
+                token,
+                expires_in: expiration - Utc::now().timestamp(),
+            })
+        } else {
+            Err(ServerError::Auth("Invalid credentials".to_string()))
+        }
+    }
+
     async fn handle_connection(
         stream: tokio::net::TcpStream,
         state: Arc<Mutex<ServerState>>,
         node: Arc<rclrs::Node>,
-        auth_token: String,
+        jwt_secret: String,
     ) -> Result<()> {
         let ws_stream = accept_async(stream).await?;
         let (mut ws_sender, mut ws_receiver) = ws_stream.split();
@@ -144,19 +181,85 @@ impl RosWebSocketServer {
         };
 
         // Authentication
-        if let Some(Ok(msg)) = ws_receiver.next().await {
-            if let WsMessage::Text(auth_msg) = msg {
-                let auth: AuthMessage = serde_json::from_str(&auth_msg)?;
-                if auth.token != auth_token {
-                    warn!("Authentication failed for client {}", client_id);
-                    return Err(ServerError::AuthenticationFailed);
+        let authenticated = match ws_receiver.next().await {
+            Some(Ok(WsMessage::Text(auth_msg))) => {
+                match serde_json::from_str::<AuthMessage>(&auth_msg) {
+                    Ok(auth) => {
+                        match Self::validate_token(&jwt_secret, &auth.token) {
+                            Ok(claims) => {
+                                let current_time = Utc::now().timestamp();
+                                if claims.exp < current_time {
+                                    error!("Token has expired for client {}", client_id);
+                                    if let Err(e) = ws_sender.send(WsMessage::Text(
+                                        json!({
+                                        "type": "auth",
+                                        "authenticated": false,
+                                        "error": "Authentication failed: Token expired"
+                                    }).to_string()
+                                    )).await {
+                                        error!("Failed to send error message: {}", e);
+                                    }
+                                    false
+                                } else {
+                                    info!("Token validated successfully for client {} (user: {})",
+                                      client_id, claims.sub);
+                                    // Send authentication success message
+                                    if let Err(e) = ws_sender.send(WsMessage::Text(
+                                        json!({
+                                        "type": "auth",
+                                        "authenticated": true,
+                                        "clientId": client_id.to_string(),
+                                        "username": claims.sub
+                                    }).to_string()
+                                    )).await {
+                                        error!("Failed to send authentication success message: {}", e);
+                                    }
+                                    true
+                                }
+                            }
+                            Err(e) => {
+                                error!("Token validation failed for client {}: {}", client_id, e);
+                                if let Err(e) = ws_sender.send(WsMessage::Text(
+                                    json!({
+                                    "type": "auth",
+                                    "authenticated": false,
+                                    "error": "Authentication failed: Invalid token"
+                                }).to_string()
+                                )).await {
+                                    error!("Failed to send error message: {}", e);
+                                }
+                                false
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        error!("Failed to parse auth message for client {}: {}", client_id, e);
+                        if let Err(e) = ws_sender.send(WsMessage::Text(
+                            json!({
+                            "type": "auth",
+                            "authenticated": false,
+                            "error": "Authentication failed: Invalid message format"
+                        }).to_string()
+                        )).await {
+                            error!("Failed to send error message: {}", e);
+                        }
+                        false
+                    }
                 }
             }
+            _ => false,
+        };
+
+        if !authenticated {
+            warn!("Authentication failed for client {}", client_id);
+            return Err(ServerError::AuthenticationFailed);
         }
+
+        info!("Client {} authenticated successfully", client_id);
 
         {
             let mut state = state.lock().unwrap();
-            state.add_client(client);  // Removed clone here since we don't need it anymore
+            state.add_client(client);
         }
 
         // Handle incoming messages
@@ -201,7 +304,7 @@ impl RosWebSocketServer {
     ) -> Result<()> {
         debug!("Received raw message: {}", message);
 
-        let client_msg: ClientMessage = serde_json::from_str(message)?;
+        let client_msg: ClientMessage = serde_json::from_str(message).unwrap();
         info!("Parsed message - Topic: {}, Type: {}", client_msg.topic, client_msg.msg_type);
         debug!("Message content: {:?}", client_msg.msg);
 
@@ -213,7 +316,7 @@ impl RosWebSocketServer {
                 let ros_msg: SerializableJointState = match serde_json::from_value(client_msg.msg.clone()) {
                     Ok(msg) => {
                         msg
-                    },
+                    }
                     Err(e) => {
                         error!("Failed to parse JointState message: {}", e);
                         error!("Raw message content: {:?}", client_msg.msg);
@@ -268,7 +371,7 @@ impl RosWebSocketServer {
                 Self::publish_message(node, &mut state, &client_msg.topic, ros_msg)?;
             }
             unsupported => {
-                error!("Unsupported message type: {}", unsupported);
+                error!("Unsupported message def: {}", unsupported);
                 return Err(ServerError::UnsupportedMessageType(unsupported.to_string()));
             }
         }
@@ -290,7 +393,7 @@ impl RosWebSocketServer {
 
         let publisher = if let Some(entry) = state.publishers.get(topic) {
             if entry.type_id != TypeId::of::<Arc<rclrs::Publisher<T>>>() {
-                info!("Removing publisher with mismatched type for topic: {}", topic);
+                info!("Removing publisher with mismatched def for topic: {}", topic);
                 state.publishers.remove(topic);
                 None
             } else {
@@ -330,7 +433,7 @@ impl RosWebSocketServer {
             None => {
                 error!("Failed to downcast publisher for topic: {}", topic);
                 Err(ServerError::Ros(format!(
-                    "Publisher type mismatch for topic: {}",
+                    "Publisher def mismatch for topic: {}",
                     topic
                 )))
             }
@@ -347,11 +450,11 @@ async fn main() -> Result<()> {
     let context = rclrs::Context::new(std::env::args())
         .map_err(|e| ServerError::Ros(e.to_string()))?;
 
-    let server = RosWebSocketServer::new(
-        &context,
-        "ros2_websocket_node",
-        std::env::var("WS_AUTH_TOKEN").unwrap_or_else(|_| "your_secret_token".to_string()),
-    )?;
+    let server = RosWebSocketServer::new(&context, "ros2_websocket_node")?;
 
-    server.run("0.0.0.0:9090").await
+    // Start WebSocket server
+    info!("Starting WebSocket server on ws://0.0.0.0:9090");
+    server.run("0.0.0.0:9090").await?;
+
+    Ok(())
 }

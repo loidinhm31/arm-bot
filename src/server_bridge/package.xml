@@ -3,8 +3,8 @@
         href="http://download.ros.org/schema/package_format3.xsd"
         schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-    <name>arm_bot_bridge</name>
-    <version>0.3.1</version>
+    <name>server_bridge</name>
+    <version>0.0.1</version>
     <description>Package containing a bridge for web-socket server.</description>
     <maintainer email="loidinh.git@gmail.com">Loi Dinh</maintainer>
     <license>Apache License 2.0</license>
