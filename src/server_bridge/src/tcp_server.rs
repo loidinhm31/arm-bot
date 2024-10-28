@@ -1,20 +1,32 @@
 mod def;
 
 use actix_cors::Cors;
-use actix_web::{web, App, HttpResponse, HttpServer};
+use actix_web::{web, App, Error, HttpResponse, HttpServer};
 use chrono::{Duration, Utc};
 use def::auth::{
     Claims,
     LoginCredentials,
-    TokenResponse,
+    RefreshTokenRequest,
     User,
 };
-use jsonwebtoken::{encode, EncodingKey, Header};
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::RwLock;
 use uuid::Uuid;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TokenPair {
+    access_token: String,
+    refresh_token: String,
+    access_expires_in: i64,
+    refresh_expires_in: i64,
+}
 
 #[derive(Clone)]
 pub struct AuthServer {
     jwt_secret: String,
+    refresh_token_store: web::Data<RwLock<HashMap<String, String>>>, // Maps refresh_token to user_id
 }
 
 impl AuthServer {
@@ -22,6 +34,7 @@ impl AuthServer {
         let jwt_secret = env!("JWT_SECRET");
         AuthServer {
             jwt_secret: jwt_secret.to_string(),
+            refresh_token_store: web::Data::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -29,28 +42,74 @@ impl AuthServer {
         self.jwt_secret.clone()
     }
 
-    fn generate_token(&self) -> Result<TokenResponse, jsonwebtoken::errors::Error> {
-        let expiration = Utc::now()
-            .checked_add_signed(Duration::hours(24))
+    fn generate_token_pair(&self, user_id: &str) -> Result<TokenPair, jsonwebtoken::errors::Error> {
+        // Generate access token (short-lived)
+        let access_expiration = Utc::now()
+            .checked_add_signed(Duration::minutes(10))
             .expect("valid timestamp")
             .timestamp();
 
-        let claims = Claims {
-            sub: Uuid::new_v4().to_string(),
-            exp: expiration,
+        let access_claims = Claims {
+            sub: user_id.to_string(),
+            exp: access_expiration,
             iat: Utc::now().timestamp(),
         };
 
-        let token = encode(
+        let access_token = encode(
             &Header::default(),
-            &claims,
+            &access_claims,
             &EncodingKey::from_secret(self.jwt_secret.as_bytes()),
         )?;
 
-        Ok(TokenResponse {
-            token,
-            expires_in: expiration - Utc::now().timestamp(),
+        // Generate refresh token (long-lived)
+        let refresh_expiration = Utc::now()
+            .checked_add_signed(Duration::days(1))
+            .expect("valid timestamp")
+            .timestamp();
+
+        let refresh_claims = Claims {
+            sub: user_id.to_string(),
+            exp: refresh_expiration,
+            iat: Utc::now().timestamp(),
+        };
+
+        let refresh_token = encode(
+            &Header::default(),
+            &refresh_claims,
+            &EncodingKey::from_secret(self.jwt_secret.as_bytes()),
+        )?;
+
+        // Store refresh token
+        self.refresh_token_store
+            .write()
+            .unwrap()
+            .insert(refresh_token.clone(), user_id.to_string());
+
+        Ok(TokenPair {
+            access_token,
+            refresh_token,
+            access_expires_in: access_expiration - Utc::now().timestamp(),
+            refresh_expires_in: refresh_expiration - Utc::now().timestamp(),
         })
+    }
+
+    fn validate_refresh_token(&self, refresh_token: &str) -> Result<String, jsonwebtoken::errors::Error> {
+        // Check if refresh token exists in store
+        let store = self.refresh_token_store.read().unwrap();
+        if let Some(user_id) = store.get(refresh_token) {
+            Ok(user_id.clone())
+        } else {
+            Err(jsonwebtoken::errors::Error::from(
+                jsonwebtoken::errors::ErrorKind::InvalidToken,
+            ))
+        }
+    }
+
+    fn invalidate_refresh_token(&self, refresh_token: &str) {
+        self.refresh_token_store
+            .write()
+            .unwrap()
+            .remove(refresh_token);
     }
 }
 
@@ -59,19 +118,39 @@ async fn authenticate(
     credentials: web::Json<LoginCredentials>,
 ) -> HttpResponse {
     let valid_user = User {
-        username: "admin".to_string(),
-        password: "password123".to_string(),
+        username: env!("BASIC_USERNAME").to_string(),
+        password: env!("BASIC_PASSWORD").to_string(),
     };
 
     println!("Authenticating username: {}...", &credentials.username);
 
     if credentials.username == valid_user.username && credentials.password == valid_user.password {
-        match server.generate_token() {
-            Ok(token_response) => HttpResponse::Ok().json(token_response),
+        let user_id = Uuid::new_v4().to_string();
+        match server.generate_token_pair(&user_id) {
+            Ok(token_pair) => HttpResponse::Ok().json(token_pair),
             Err(e) => HttpResponse::InternalServerError().json(format!("Token generation failed: {}", e)),
         }
     } else {
         HttpResponse::Unauthorized().json("Invalid credentials")
+    }
+}
+
+async fn refresh_token(
+    server: web::Data<AuthServer>,
+    refresh_request: web::Json<RefreshTokenRequest>,
+) -> HttpResponse {
+    match server.validate_refresh_token(&refresh_request.refresh_token) {
+        Ok(user_id) => {
+            // Invalidate old refresh token
+            server.invalidate_refresh_token(&refresh_request.refresh_token);
+
+            // Generate new token pair
+            match server.generate_token_pair(&user_id) {
+                Ok(token_pair) => HttpResponse::Ok().json(token_pair),
+                Err(e) => HttpResponse::InternalServerError().json(format!("Token generation failed: {}", e)),
+            }
+        }
+        Err(_) => HttpResponse::Unauthorized().json("Invalid refresh token"),
     }
 }
 
@@ -82,7 +161,6 @@ async fn main() -> std::io::Result<()> {
     println!("Starting authentication server on http://0.0.0.0:8089");
 
     HttpServer::new(move || {
-        // Configure CORS middleware
         let cors = Cors::permissive()
             .allowed_methods(vec!["GET", "POST"])
             .allowed_headers(vec![
@@ -97,6 +175,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(cors)
             .app_data(auth_server.clone())
             .route("/auth", web::post().to(authenticate))
+            .route("/refresh", web::post().to(refresh_token))
     })
         .bind("0.0.0.0:8089")?
         .run()
