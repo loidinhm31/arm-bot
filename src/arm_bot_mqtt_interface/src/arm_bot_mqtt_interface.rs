@@ -16,9 +16,6 @@ struct ArmbotMqttNode {
     node: Arc<Node>,
     mqtt_client: Arc<Client>,
     joint_commands: Arc<Mutex<Vec<f64>>>,
-    joint_states: Arc<Mutex<Vec<f64>>>,
-    new_command_received: Arc<Mutex<bool>>,
-    joint_state_publisher: Arc<Publisher<JointState>>,
     _command_subscriber: Arc<rclrs::Subscription<JointState>>,
 }
 
@@ -31,21 +28,15 @@ impl ArmbotMqttNode {
         let mqtt_client = Arc::new(mqtt_client);
 
         let joint_commands = Arc::new(Mutex::new(vec![0.0; 4]));
-        let joint_states = Arc::new(Mutex::new(vec![0.0; 4]));
-        let new_command_received = Arc::new(Mutex::new(false));
-
-        let joint_state_publisher = node.create_publisher::<JointState>("/joint_states", rclrs::QOS_PROFILE_DEFAULT)?;
 
         let commands_clone = joint_commands.clone();
-        let new_command_received_clone = new_command_received.clone();
         let _command_subscriber = node.create_subscription::<JointState, _>(
-            "/joint_commands",
+            "/joint_states",
             rclrs::QOS_PROFILE_DEFAULT,
             move |msg: JointState| {
-                println!("Received joint command: {:?}", msg.position);
+                println!("Received joint states: {:?}", msg.position);
                 let mut commands = commands_clone.lock().unwrap();
                 *commands = msg.position.to_vec();
-                *new_command_received_clone.lock().unwrap() = true;
             },
         )?;
 
@@ -53,9 +44,6 @@ impl ArmbotMqttNode {
             node,
             mqtt_client,
             joint_commands,
-            joint_states,
-            new_command_received,
-            joint_state_publisher,
             _command_subscriber,
         });
 
@@ -74,34 +62,15 @@ impl ArmbotMqttNode {
 
         let mut mqtt_options = MqttOptions::new(client_id, mqtt_server_name, mqtt_server_port);
         mqtt_options.set_credentials(mqtt_username, mqtt_password);
-        mqtt_options.set_keep_alive(Duration::from_secs(5));
 
         Ok(Client::new(mqtt_options, 10))
     }
 
     fn start_mqtt_event_loop(self: &Arc<Self>, mut event_loop: Connection) {
-        let mqtt_client = self.mqtt_client.clone();
-        let joint_state_publisher = self.joint_state_publisher.clone();
-
         thread::spawn(move || {
-            mqtt_client.subscribe("armbot/feedback", rumqttc::v5::mqttbytes::QoS::AtLeastOnce).unwrap();
-
             loop {
                 for (i, notification) in event_loop.iter().enumerate() {
                     match notification {
-                        Ok(Event::Incoming(Incoming::Publish(publish))) => {
-                            if publish.topic == "armbot/feedback" {
-                                let payload = String::from_utf8_lossy(&publish.payload);
-                                if let Ok(new_joint_states) = Self::parse_feedback(&payload) {
-                                    if let Err(e) = Self::update_and_publish_joint_states(
-                                        &joint_state_publisher,
-                                        new_joint_states,
-                                    ) {
-                                        eprintln!("Error updating and publishing joint states: {:?}", e);
-                                    }
-                                }
-                            }
-                        }
                         Ok(Event::Incoming(Incoming::ConnAck(_))) => {
                             println!("Connected to MQTT broker");
                         }
@@ -119,36 +88,22 @@ impl ArmbotMqttNode {
     }
 
     fn run(self: &Arc<Self>) -> Result<(), RclrsError> {
-        self.run_publisher()?;
+        self.run_publisher_mqtt()?;
         Ok(())
     }
 
-    fn run_publisher(&self) -> Result<(), RclrsError> {
+    fn run_publisher_mqtt(&self) -> Result<(), RclrsError> {
         let mqtt_client = self.mqtt_client.clone();
         let joint_commands = self.joint_commands.clone();
-        let new_command_received = self.new_command_received.clone();
 
         thread::spawn(move || {
             loop {
-                thread::sleep(Duration::from_millis(100));
-
-                let should_publish = {
-                    let mut new_command = new_command_received.lock().unwrap();
-                    if *new_command {
-                        *new_command = false;
-                        true
-                    } else {
-                        false
-                    }
-                };
-
-                if should_publish {
-                    let commands = joint_commands.lock().unwrap().clone();
-                    let msg = Self::format_joint_command(&commands);
-                    println!("Sending new command: {}", msg);
-                    if let Err(e) = mqtt_client.publish("armbot/commands", rumqttc::v5::mqttbytes::QoS::AtLeastOnce, false, msg.into_bytes()) {
-                        eprintln!("Failed to send MQTT command: {:?}", e);
-                    }
+                thread::sleep(Duration::from_millis(1500));
+                let commands = joint_commands.lock().unwrap().clone();
+                let msg = Self::format_joint_command(&commands);
+                println!("Sending new command: {}", msg);
+                if let Err(e) = mqtt_client.publish("armbot/commands", rumqttc::v5::mqttbytes::QoS::AtLeastOnce, false, msg.into_bytes()) {
+                    eprintln!("Failed to send MQTT command: {:?}", e);
                 }
             }
         });

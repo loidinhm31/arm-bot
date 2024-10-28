@@ -27,7 +27,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "armbot_mqtt_interface"
+name = "arm_bot_mqtt_interface"
 version = "0.1.0"
 dependencies = [
  "builtin_interfaces",
@@ -478,8 +478,6 @@ dependencies = [
 [[package]]
 name = "rclrs"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f09c74a3c91a78ca07bbf5ebef960c5762a64e2a0b8cba6ec9377ec82b85b29"
 dependencies = [
  "bindgen",
  "cfg-if",
@@ -534,8 +532,6 @@ dependencies = [
 [[package]]
 name = "rosidl_runtime_rs"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab7a28fb13ba53b35aea2a403a1da49baa03a901c8befe1cea5f42dbc66857db"
 dependencies = [
  "cfg-if",
 ]
@@ -918,3 +914,103 @@ name = "zeroize"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ced3678a2879b30306d323f4542626697a464a97c0a07c9aebf7ebca65cd4dde"
+
+[[patch.unused]]
+name = "action_msgs"
+version = "1.2.1"
+
+[[patch.unused]]
+name = "actionlib_msgs"
+version = "4.2.4"
+
+[[patch.unused]]
+name = "arm_bot_controller"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "armbot_msgs"
+version = "0.0.0"
+
+[[patch.unused]]
+name = "composition_interfaces"
+version = "1.2.1"
+
+[[patch.unused]]
+name = "diagnostic_msgs"
+version = "4.2.4"
+
+[[patch.unused]]
+name = "example_interfaces"
+version = "0.9.3"
+
+[[patch.unused]]
+name = "examples_rclrs_message_demo"
+version = "0.4.1"
+
+[[patch.unused]]
+name = "examples_rclrs_minimal_client_service"
+version = "0.4.1"
+
+[[patch.unused]]
+name = "examples_rclrs_minimal_pub_sub"
+version = "0.4.1"
+
+[[patch.unused]]
+name = "lifecycle_msgs"
+version = "1.2.1"
+
+[[patch.unused]]
+name = "nav_msgs"
+version = "4.2.4"
+
+[[patch.unused]]
+name = "rcl_interfaces"
+version = "1.2.1"
+
+[[patch.unused]]
+name = "rclrs_example_msgs"
+version = "0.4.1"
+
+[[patch.unused]]
+name = "rosgraph_msgs"
+version = "1.2.1"
+
+[[patch.unused]]
+name = "rust_pubsub"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "server_bridge"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "shape_msgs"
+version = "4.2.4"
+
+[[patch.unused]]
+name = "statistics_msgs"
+version = "1.2.1"
+
+[[patch.unused]]
+name = "std_srvs"
+version = "4.2.4"
+
+[[patch.unused]]
+name = "stereo_msgs"
+version = "4.2.4"
+
+[[patch.unused]]
+name = "test_msgs"
+version = "1.2.1"
+
+[[patch.unused]]
+name = "trajectory_msgs"
+version = "4.2.4"
+
+[[patch.unused]]
+name = "unique_identifier_msgs"
+version = "2.2.1"
+
+[[patch.unused]]
+name = "visualization_msgs"
+version = "4.2.4"

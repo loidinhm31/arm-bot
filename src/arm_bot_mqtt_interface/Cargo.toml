@@ -1,11 +1,11 @@
 [package]
-name = "armbot_mqtt_interface"
+name = "arm_bot_mqtt_interface"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "armbot_mqtt_interface"
-path = "src/armbot_mqtt_interface.rs"
+name = "arm_bot_mqtt_interface"
+path = "src/arm_bot_mqtt_interface.rs"
 
 [dependencies.rumqttc]
 version = "0.24.0"
