@@ -1,0 +1,33 @@
+[package]
+name = "arm_bot_controller"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "arm_bot_slider_control"
+path = "src/arm_bot_slider_control.rs"
+
+[dependencies.rumqttc]
+version = "0.24.0"
+
+[dependencies.rclrs]
+version = "0.4"
+
+[dependencies.rosidl_runtime_rs]
+version = "0.4"
+
+[dependencies.std_msgs]
+version = "*"
+
+[dependencies.builtin_interfaces]
+version = "*"
+
+[dependencies.sensor_msgs]
+version = "*"
+
+[dependencies.trajectory_msgs]
+version = "*"
+
+[dependencies]
+log = "0.4.22"
+tracing = "0.1.40"
