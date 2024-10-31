@@ -10,8 +10,6 @@ find_package(std_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "srv/EulerToQuaternion.srv"
-  "srv/QuaternionToEuler.srv"
   "action/ArmbotTask.action"
 )
 
