@@ -21,10 +21,10 @@ struct ArmbotMqttNode {
 
 impl ArmbotMqttNode {
     fn new(context: &rclrs::Context) -> Result<Arc<Self>, RclrsError> {
-        let node = rclrs::create_node(context, "armbot_mqtt_node")?;
+        let node = rclrs::create_node(context, "arm_bot_mqtt_node")?;
 
         // MQTT setup
-        let (mqtt_client, event_loop) = Self::create_mqtt_client("armbot_client")?;
+        let (mqtt_client, event_loop) = Self::create_mqtt_client("arm_bot_client")?;
         let mqtt_client = Arc::new(mqtt_client);
 
         let joint_commands = Arc::new(Mutex::new(vec![0.0; 4]));
@@ -98,11 +98,11 @@ impl ArmbotMqttNode {
 
         thread::spawn(move || {
             loop {
-                thread::sleep(Duration::from_millis(1500));
+                thread::sleep(Duration::from_millis(500));
                 let commands = joint_commands.lock().unwrap().clone();
                 let msg = Self::format_joint_command(&commands);
                 println!("Sending new command: {}", msg);
-                if let Err(e) = mqtt_client.publish("armbot/commands", rumqttc::v5::mqttbytes::QoS::AtLeastOnce, false, msg.into_bytes()) {
+                if let Err(e) = mqtt_client.publish("arm_bot/commands", rumqttc::v5::mqttbytes::QoS::AtLeastOnce, false, msg.into_bytes()) {
                     eprintln!("Failed to send MQTT command: {:?}", e);
                 }
             }
@@ -166,40 +166,6 @@ impl ArmbotMqttNode {
             joint_states[index] = radians;
         }
         Ok(joint_states)
-    }
-
-    fn update_and_publish_joint_states(
-        joint_state_publisher: &Arc<Publisher<JointState>>,
-        new_joint_states: Vec<f64>,
-    ) -> Result<(), RclrsError> {
-        println!("Publishing joints {:?}", new_joint_states.clone());
-
-        let duration_since_epoch = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap();
-
-        let header = std_msgs::msg::rmw::Header {
-            stamp: builtin_interfaces::msg::rmw::Time {
-                sec: duration_since_epoch.as_secs() as i32,
-                nanosec: duration_since_epoch.subsec_nanos(),
-            },
-            frame_id: RosString::from("joint"),
-        };
-
-        let mut joint_state_msg = JointState::default();
-        joint_state_msg.header = header;
-        joint_state_msg.name = Sequence::from_iter(vec![
-            "base_joint", "shoulder_joint", "elbow_joint", "gripper_joint"
-        ].into_iter().map(RosString::from));
-        let mut position_sequence = Sequence::new(new_joint_states.len());
-        for (i, &position) in new_joint_states.iter().enumerate() {
-            position_sequence[i] = position;
-        }
-        joint_state_msg.position = position_sequence;
-
-        joint_state_publisher.publish(&joint_state_msg)
-            .expect("failed to publish message");
-        Ok(())
     }
 }
 
