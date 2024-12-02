@@ -1,3 +1,8 @@
+# Build
+```shell
+vcs import src < src/ros2_rust/ros2_rust_humble.repos
+```
+
 It’s good practice to run rosdep in the root of your workspace (ros2_ws) to check for missing dependencies before building:
 ```shell
 rosdep install -i --from-path src --rosdistro ${ROS_DISTRO} -y
@@ -101,3 +106,48 @@ pip install flask
 pip install ask-sdk
 pip install flask-ask-sdk
 ```
+
+```shell
+ros2 launch arm_bot_bringup simulated_robot.launch.py
+```
+
+## Rosbridge Websocket SSL connection
+### OpenSSL
+Key:
+```shell
+openssl genrsa -out server_key.pem 2048
+```
+
+Certificate Signing Request:
+```shell
+openssl req -new -key server_key.pem -out server_csr.pem
+```
+
+Certificate:
+```shell
+openssl x509 -req -days 1825 -in server_csr.pem -signkey server_key.pem -out server_cert.pem
+```
+
+### Solution for working with self-signed certificates
+Open the URL:PORT of secure websocket-server in the browser
+
+https://127.0.0.1:9090
+
+Or from a remote machine:
+https://10.3.10.199:9090
+
+A security warning will appear, asking you to confirm or decline the self-signed certificate.
+
+------------------------------------------------------
+colcon build --packages-select armbot_mqtt_interface
+
+ros2 launch armbot_bringup arm_bot.launch.py
+
+*ros2 launch armbot_mqtt_interface armbot_mqtt_interface
+
+
+ros2 run armbot_mqtt_interface armbot_mqtt_interface
+
+ros2 topic pub /joint_states sensor_msgs/msg/JointState '{header: {stamp: {sec: 0, nanosec: 0}, frame_id: ""}, name: ['base_joint', 'shoulder_joint', 'elbow_joint', 'gripper_joint'], position: [2.0, 5.0, 15.0, 0.0], velocity: [], effort: []}'
+
+mosquitto_sub -h 127.0.0.1 -t "armbot/commands" -u "armbot" -P "18s=799G"
