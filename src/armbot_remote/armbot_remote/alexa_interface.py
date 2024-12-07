@@ -21,11 +21,11 @@ app = Flask(__name__)
 
 class LaunchRequestHandler(AbstractRequestHandler):
     def can_handle(self, handler_input):
-        # type: (HandlerInput) -> bool
+        # def: (HandlerInput) -> bool
         return is_request_type("LaunchRequest")(handler_input)
 
     def handle(self, handler_input):
-        # type: (HandlerInput) -> Response
+        # def: (HandlerInput) -> Response
         speech_text = "Hi, how can we help?"
 
         handler_input.response_builder.speak(speech_text).set_card(
@@ -41,11 +41,11 @@ class LaunchRequestHandler(AbstractRequestHandler):
 
 class PickIntentHandler(AbstractRequestHandler):
     def can_handle(self, handler_input):
-        # type: (HandlerInput) -> bool
+        # def: (HandlerInput) -> bool
         return is_intent_name("PickIntent")(handler_input)
 
     def handle(self, handler_input):
-        # type: (HandlerInput) -> Response
+        # def: (HandlerInput) -> Response
         speech_text = "Ok, I'm moving"
 
         handler_input.response_builder.speak(speech_text).set_card(
@@ -61,11 +61,11 @@ class PickIntentHandler(AbstractRequestHandler):
 
 class SleepIntentHandler(AbstractRequestHandler):
     def can_handle(self, handler_input):
-        # type: (HandlerInput) -> bool
+        # def: (HandlerInput) -> bool
         return is_intent_name("SleepIntent")(handler_input)
 
     def handle(self, handler_input):
-        # type: (HandlerInput) -> Response
+        # def: (HandlerInput) -> Response
         speech_text = "Ok, see you later"
 
         handler_input.response_builder.speak(speech_text).set_card(
@@ -81,11 +81,11 @@ class SleepIntentHandler(AbstractRequestHandler):
 
 class WakeIntentHandler(AbstractRequestHandler):
     def can_handle(self, handler_input):
-        # type: (HandlerInput) -> bool
+        # def: (HandlerInput) -> bool
         return is_intent_name("WakeIntent")(handler_input)
 
     def handle(self, handler_input):
-        # type: (HandlerInput) -> Response
+        # def: (HandlerInput) -> Response
         speech_text = "Hi, I am ready"
 
         handler_input.response_builder.speak(speech_text).set_card(
@@ -102,11 +102,11 @@ class WakeIntentHandler(AbstractRequestHandler):
 class AllExceptionHandler(AbstractExceptionHandler):
 
     def can_handle(self, handler_input, exception):
-        # type: (HandlerInput, Exception) -> bool
+        # def: (HandlerInput, Exception) -> bool
         return True
 
     def handle(self, handler_input, exception):
-        # type: (HandlerInput, Exception) -> Response
+        # def: (HandlerInput, Exception) -> Response
 
         speech = "Hmm, I don't know that. Can you please say it again?"
         handler_input.response_builder.speak(speech).ask(speech)

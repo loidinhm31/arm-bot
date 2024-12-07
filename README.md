@@ -1,6 +1,21 @@
+Before build packages
+```shell
+sudo apt install -y git libclang-dev python3-pip python3-vcstool # libclang-dev is required by bindgen
+
+sudo apt-get install ros-${ROS_DISTRO}-moveit-planners*
+
+# Install these plugins for cargo and colcon:
+pip install git+https://github.com/colcon/colcon-cargo.git
+pip install git+https://github.com/colcon/colcon-ros-cargo.git
+```
+
 # Build
 ```shell
 vcs import src < src/ros2_rust/ros2_rust_humble.repos
+vcs import src < src/ros2_rust/ros2_rust.repos
+
+colcon build --packages-skip arm_bot_bringup arm_bot_controller arm_bot_mqtt_interface armbot_controller armbot_description armbot_moveit armbot_msgs armbot_remote server_bridge
+source install/setup.bash
 ```
 
 It’s good practice to run rosdep in the root of your workspace (ros2_ws) to check for missing dependencies before building:
@@ -11,7 +26,6 @@ rosdep install -i --from-path src --rosdistro ${ROS_DISTRO} -y
 ```shell
 sudo apt install python3-colcon-common-extensions
 ```
-
 
 
 # Digital Twin
